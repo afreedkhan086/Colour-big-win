@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Activity, TrendingUp, ShieldCheck, History, Zap, AlertCircle, BrainCircuit, BarChart3, Info, ListOrdered, X, Settings, LayoutGrid, Cpu, Fingerprint } from "lucide-react";
+import { Activity, TrendingUp, ShieldCheck, History, Zap, AlertCircle, BrainCircuit, BarChart3, Info, ListOrdered, X, Settings, LayoutGrid, Cpu, Fingerprint, CheckCircle2, XCircle } from "lucide-react";
 import { fetchWinGoData, analyzeData, getAIInsights, getAIPrediction } from "./services/engine";
 import { PredictionResult, Stats, AIInsight } from "./types";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
@@ -41,6 +41,8 @@ export default function App() {
   const [lastUpdate, setLastUpdate] = useState<string>("Checking server...");
   const [aiInsight, setAiInsight] = useState<AIInsight | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [geminiKey, setGeminiKey] = useState<string>(() => localStorage.getItem('gemini_api_key') || "");
+  const [lotteryUrl, setLotteryUrl] = useState<string>(() => localStorage.getItem('lottery_api_url') || "");
   const [winLossHistory, setWinLossHistory] = useState<WinLossRecord[]>(() => {
     try {
       const saved = localStorage.getItem('neural_history');
@@ -409,11 +411,29 @@ export default function App() {
                     </motion.div>
                   </AnimatePresence>
                   
+                  {/* Last Result Indicator */}
+                  {winLossHistory.length > 0 && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="absolute -bottom-2 flex flex-col items-center"
+                    >
+                      <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest mb-1">Last Result</span>
+                      <div className={`px-4 py-1 rounded-full text-[10px] font-black flex items-center gap-2 shadow-lg ${
+                        winLossHistory[0].isWin ? "bg-emerald-500 text-white shadow-emerald-500/20" : "bg-rose-500 text-white shadow-rose-500/20"
+                      }`}>
+                        {winLossHistory[0].isWin ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                        {winLossHistory[0].isWin ? "WIN" : "LOSS"}
+                        <span className="opacity-60 ml-1">#{winLossHistory[0].period.slice(-3)}</span>
+                      </div>
+                    </motion.div>
+                  )}
+                  
                   {/* Pattern Badge */}
                   <div className="absolute top-0 right-0">
                     <div className="px-3 py-1 bg-cyan-500/10 border border-cyan-500/20 rounded-full flex items-center gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-ping" />
-                      <span className="text-[8px] font-black text-cyan-400 uppercase tracking-widest">Pattern Sync: {aiInsight.detectedPatterns[0]}</span>
+                      <span className="text-[8px] font-black text-cyan-400 uppercase tracking-widest">Pattern Sync: {aiInsight?.detectedPatterns?.[0] || "Scanning..."}</span>
                     </div>
                   </div>
                   
@@ -620,13 +640,11 @@ export default function App() {
                 </div>
                 <button 
                   onClick={() => {
-                    if (confirm("Reset current session stats and history?")) {
-                      setStats({ wins: 0, losses: 0 });
-                      setWinLossHistory([]);
-                      localStorage.removeItem('neural_stats');
-                      localStorage.removeItem('neural_history');
-                      addFeed("Session Data Purged", "text-rose-400");
-                    }
+                    setStats({ wins: 0, losses: 0 });
+                    setWinLossHistory([]);
+                    localStorage.removeItem('neural_stats');
+                    localStorage.removeItem('neural_history');
+                    addFeed("Session Data Purged", "text-rose-400");
                   }}
                   className="mt-3 text-[8px] font-black text-slate-600 hover:text-rose-400 uppercase tracking-widest transition-colors"
                 >
@@ -709,7 +727,7 @@ export default function App() {
                   <div className="space-y-2">
                     <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Detected Patterns</div>
                     <div className="flex flex-wrap gap-2">
-                      {aiInsight.detectedPatterns.map((p, i) => (
+                      {aiInsight?.detectedPatterns?.map((p, i) => (
                         <span key={i} className="px-2 py-1 bg-slate-950/50 border border-white/5 rounded-md text-[8px] font-bold text-slate-400 uppercase tracking-wider">
                           {p}
                         </span>
@@ -800,11 +818,16 @@ export default function App() {
                       </div>
                       <div className="flex items-center gap-3">
                         {predictionForThis && (
-                          <span className={`text-[8px] font-black px-2 py-1 rounded-lg ${
-                            predictionForThis.isWin ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
+                          <div className={`flex items-center gap-1 px-2 py-1 rounded-lg border ${
+                            predictionForThis.isWin 
+                              ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" 
+                              : "bg-rose-500/20 text-rose-400 border-rose-500/30"
                           }`}>
-                            {predictionForThis.isWin ? "WIN" : "LOSS"}
-                          </span>
+                            {predictionForThis.isWin ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                            <span className="text-[8px] font-black uppercase tracking-widest">
+                              {predictionForThis.isWin ? "WIN" : "LOSS"}
+                            </span>
+                          </div>
                         )}
                         <span className={`text-[10px] font-black tracking-widest ${
                           res.bs === 'BIG' ? 'text-emerald-400' : 'text-amber-400'
@@ -950,7 +973,7 @@ export default function App() {
                             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg ${
                               record.isWin ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
                             }`}>
-                              {record.isWin ? "W" : "L"}
+                              {record.isWin ? <CheckCircle2 className="w-6 h-6" /> : <XCircle className="w-6 h-6" />}
                             </div>
                             <div className="space-y-1">
                               <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Period: {record.period}</div>
@@ -1080,7 +1103,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Settings Modal - Simplified for Status */}
+      {/* Settings Modal */}
       <AnimatePresence>
         {showSettingsModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1099,8 +1122,8 @@ export default function App() {
             >
               <div className="p-6 border-b border-white/5 flex justify-between items-center">
                 <div className="flex items-center gap-3">
-                  <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                  <h2 className="text-lg font-black text-white uppercase tracking-widest">System Status</h2>
+                  <Settings className="w-5 h-5 text-cyan-400" />
+                  <h2 className="text-lg font-black text-white uppercase tracking-widest">Neural Settings</h2>
                 </div>
                 <button 
                   onClick={() => setShowSettingsModal(false)}
@@ -1111,32 +1134,61 @@ export default function App() {
               </div>
               
               <div className="p-8 space-y-6">
-                <div className="bg-emerald-500/5 border border-emerald-500/10 p-6 rounded-3xl text-center space-y-4">
-                  <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto">
-                    <BrainCircuit className="w-8 h-8 text-emerald-400" />
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Gemini API Key</label>
+                    <div className="relative">
+                      <input 
+                        type="password"
+                        value={geminiKey}
+                        onChange={(e) => setGeminiKey(e.target.value)}
+                        placeholder="Enter Gemini API Key..."
+                        className="w-full bg-slate-950 border border-white/5 rounded-2xl p-4 text-xs font-mono text-cyan-400 focus:outline-none focus:border-cyan-500/50 transition-all"
+                      />
+                      <Fingerprint className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-700 pointer-events-none" />
+                    </div>
+                    <p className="text-[8px] text-slate-600 font-bold uppercase tracking-tighter ml-1">Leave empty to use system default key</p>
                   </div>
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-black text-white uppercase tracking-widest">AI Engine Active</h3>
-                    <p className="text-[10px] text-emerald-400/60 font-bold uppercase tracking-widest">Enterprise Neural Network Connected</p>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Custom Lottery API URL</label>
+                    <div className="relative">
+                      <input 
+                        type="text"
+                        value={lotteryUrl}
+                        onChange={(e) => setLotteryUrl(e.target.value)}
+                        placeholder="https://api.example.com/data..."
+                        className="w-full bg-slate-950 border border-white/5 rounded-2xl p-4 text-xs font-mono text-slate-300 focus:outline-none focus:border-cyan-500/50 transition-all"
+                      />
+                      <LayoutGrid className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-700 pointer-events-none" />
+                    </div>
+                    <p className="text-[8px] text-slate-600 font-bold uppercase tracking-tighter ml-1">Direct URL or Proxy Endpoint (Optional)</p>
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-slate-950/50 rounded-2xl border border-white/5">
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">API Status</span>
-                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Operational</span>
+                <div className="bg-cyan-500/5 border border-cyan-500/10 p-6 rounded-3xl space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Neural Sync</span>
+                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Active</span>
                   </div>
-                  <div className="flex items-center justify-between p-4 bg-slate-950/50 rounded-2xl border border-white/5">
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Encryption</span>
-                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">AES-256</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Engine Version</span>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">V4.2.0-PRO</span>
                   </div>
                 </div>
 
                 <button 
-                  onClick={() => setShowSettingsModal(false)}
-                  className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all active:scale-[0.98]"
+                  onClick={() => {
+                    localStorage.setItem('gemini_api_key', geminiKey);
+                    localStorage.setItem('lottery_api_url', lotteryUrl);
+                    setShowSettingsModal(false);
+                    addFeed("Neural Configuration Updated", "text-cyan-400");
+                    // Refresh data with new settings
+                    fetchData();
+                  }}
+                  className="w-full py-4 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black rounded-2xl uppercase tracking-widest transition-all shadow-lg shadow-cyan-500/20"
                 >
-                  Close
+                  Save Configuration
                 </button>
               </div>
             </motion.div>
