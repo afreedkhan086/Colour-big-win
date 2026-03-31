@@ -6,21 +6,24 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+const app = express();
+const PORT = 3000;
 
+async function startServer() {
   // Proxy for WinGo API to avoid CORS
   app.get("/api/proxy/wingo", async (req, res) => {
     try {
       const ts = req.query.ts || Date.now();
+      // Using a more common mobile user agent to bypass some bot detections
       const API_URL = `https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?ts=${ts}`;
       
       const response = await fetch(API_URL, {
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+          "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1",
           "Accept": "application/json, text/plain, */*",
           "Referer": "https://ar-lottery01.com/",
+          "Origin": "https://ar-lottery01.com",
+          "Accept-Language": "en-US,en;q=0.9",
         }
       });
       
@@ -51,11 +54,14 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
-
-  return app;
+  // Only listen if not being imported as a module (e.g. by Vercel)
+  if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
 }
 
-export default startServer();
+startServer();
+
+export default app;
