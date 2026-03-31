@@ -58,14 +58,28 @@ async function startServer() {
     }
 
     // If all fail, return a simulated response so the app doesn't stay "Offline"
+    // We generate dynamic issue numbers based on current time to keep the app "moving"
+    const now = new Date();
+    const baseIssue = now.getFullYear().toString() + 
+                     (now.getMonth() + 1).toString().padStart(2, '0') + 
+                     now.getDate().toString().padStart(2, '0') + 
+                     "000";
+    
+    const simulatedList = [];
+    for (let i = 0; i < 30; i++) {
+      const num = Math.floor(Math.random() * 10);
+      simulatedList.push({
+        issueNumber: (BigInt(baseIssue) + BigInt(i)).toString(),
+        number: num.toString(),
+        colour: num % 2 === 0 ? (num === 0 ? "red-violet" : "red") : (num === 5 ? "green-violet" : "green"),
+        premium: num >= 5 ? "BIG" : "SMALL"
+      });
+    }
+
     res.json({
       code: 0,
       data: {
-        list: [
-          { issueNumber: "202403310001", number: 5, colour: "green", premium: "BIG" },
-          { issueNumber: "202403310002", number: 2, colour: "red", premium: "SMALL" },
-          { issueNumber: "202403310003", number: 8, colour: "red", premium: "BIG" },
-        ]
+        list: simulatedList.reverse() // Latest first
       },
       msg: "Simulated Data (API Unreachable)"
     });

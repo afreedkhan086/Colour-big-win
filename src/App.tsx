@@ -126,11 +126,16 @@ export default function App() {
   };
 
   const getNewPrediction = async () => {
-    if (bsHistory.length < 5) return;
+    if (bsHistory.length < 5) {
+      addFeed("Collecting more data for AI...", "text-slate-500");
+      return;
+    }
     
     setIsAnalyzing(true);
     const nextP = (BigInt(lastPeriod!) + 1n).toString();
     setNextPeriod(nextP);
+    
+    addFeed(`Analyzing Period ${nextP}...`, "text-cyan-500/50");
     
     // Use Gemini for the main prediction
     const result = await getAIPrediction(bsHistory, userApiKey);
@@ -138,7 +143,9 @@ export default function App() {
     
     if (result.pick !== "WAIT") {
       predictionHistoryRef.current[nextP] = result.pick;
-      addFeed(`AI Prediction: ${result.pick}`, "text-cyan-400");
+      addFeed(`AI Prediction: ${result.pick} (${result.conf}%)`, "text-cyan-400");
+    } else {
+      addFeed("AI Engine Busy. Retrying...", "text-amber-400");
     }
     setIsAnalyzing(false);
   };
@@ -160,9 +167,9 @@ export default function App() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 2000);
+    const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
-  }, [lastPeriod]);
+  }, []); // Poller should only run once on mount
 
   const chartData = historyData.slice(-20).map((val, idx) => ({
     time: idx,
@@ -196,6 +203,13 @@ export default function App() {
           </div>
           <div className="flex flex-col items-end relative z-10">
             <div className="flex items-center gap-3">
+              <button 
+                onClick={fetchData}
+                className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full border border-white/10 transition-colors group/btn"
+                title="Force Refresh"
+              >
+                <Activity className={`w-4 h-4 text-slate-400 group-hover/btn:text-emerald-400 transition-colors ${status === "connecting" ? "animate-spin" : ""}`} />
+              </button>
               <button 
                 onClick={() => {
                   setTempApiKey(userApiKey);
