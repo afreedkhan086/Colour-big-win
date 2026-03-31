@@ -26,8 +26,17 @@ export async function fetchWinGoData(): Promise<WinGoApiResponse> {
   return response.json();
 }
 
+let geminiCooldownUntil = 0;
+
 export async function getAIInsights(historyData: number[], bsHistory: ("BIG" | "SMALL")[]): Promise<AIInsight> {
+  const now = Date.now();
+  const isCooldownActive = now < geminiCooldownUntil;
+
   try {
+    if (isCooldownActive) {
+      throw new Error("429: Cooldown active");
+    }
+
     const ai = getAIInstance();
     const historyStr = bsHistory.slice(-50).join(", ");
     
@@ -67,14 +76,23 @@ export async function getAIInsights(historyData: number[], bsHistory: ("BIG" | "
       detectedPatterns: result.detectedPatterns || ["Scanning..."],
       trendStrength: result.trendStrength || 50
     };
-  } catch (error) {
-    console.error("Gemini Error:", error);
+  } catch (error: any) {
+    const isQuotaError = error?.message?.includes("429") || error?.status === "RESOURCE_EXHAUSTED" || error?.message?.includes("Cooldown active");
+    
+    if (isQuotaError && !error?.message?.includes("Cooldown active")) {
+      // Set 5 minute cooldown
+      geminiCooldownUntil = Date.now() + 5 * 60 * 1000;
+    }
+
+    if (!isQuotaError) {
+      console.error("Gemini Insight Error:", error);
+    }
     
     // Fallback to local analysis if AI fails (e.g., 429 Quota Exceeded)
     const localResult = analyzeData(historyData, bsHistory);
     return {
       sentiment: localResult.pick === "BIG" ? "BULLISH" : "BEARISH",
-      reasoning: `[NEURAL_V3_ACTIVE] ${localResult.logic}. AI Engine high load, switching to Neural Markov V3. Trend analysis indicates high probability of ${localResult.pick} continuation.`,
+      reasoning: `[NEURAL_V3_ACTIVE] ${localResult.logic}. ${isQuotaError ? "AI Quota reached, using High-Precision Local Engine." : "AI Engine recalibrating, switching to Neural Markov V3."} Trend analysis indicates high probability of ${localResult.pick} continuation.`,
       riskLevel: localResult.conf > 90 ? "LOW" : "MEDIUM",
       detectedPatterns: ["Local Neural Sync", "Streak Preservation", "Markov V3"],
       trendStrength: localResult.conf
@@ -83,7 +101,14 @@ export async function getAIInsights(historyData: number[], bsHistory: ("BIG" | "
 }
 
 export async function getAIPrediction(historyData: number[], bsHistory: ("BIG" | "SMALL")[]): Promise<PredictionResult> {
+  const now = Date.now();
+  const isCooldownActive = now < geminiCooldownUntil;
+
   try {
+    if (isCooldownActive) {
+      throw new Error("429: Cooldown active");
+    }
+
     const ai = getAIInstance();
     const historyStr = bsHistory.slice(-40).join(", ");
     
@@ -120,14 +145,23 @@ export async function getAIPrediction(historyData: number[], bsHistory: ("BIG" |
       conf: result.conf || 85,
       logic: result.logic || "Neural Pattern Synchronisation"
     };
-  } catch (error) {
-    console.error("Gemini Prediction Error:", error);
+  } catch (error: any) {
+    const isQuotaError = error?.message?.includes("429") || error?.status === "RESOURCE_EXHAUSTED" || error?.message?.includes("Cooldown active");
+    
+    if (isQuotaError && !error?.message?.includes("Cooldown active")) {
+      // Set 5 minute cooldown
+      geminiCooldownUntil = Date.now() + 5 * 60 * 1000;
+    }
+
+    if (!isQuotaError) {
+      console.error("Gemini Prediction Error:", error);
+    }
     
     // Fallback to local analysis if AI fails (e.g., 429 Quota Exceeded)
     const localResult = analyzeData(historyData, bsHistory);
     return {
       ...localResult,
-      logic: `[LOCAL_NEURAL_V3] ${localResult.logic}. AI Engine offline, using high-precision local neural engine V3.`
+      logic: `[LOCAL_NEURAL_V3] ${localResult.logic}. ${isQuotaError ? "AI Quota reached, using High-Precision Local Engine V3." : "AI Engine offline, using local neural engine."}`
     };
   }
 }
