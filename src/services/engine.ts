@@ -3,7 +3,8 @@ import { GoogleGenAI } from "@google/genai";
 
 const API_URL = "/api/proxy/wingo?ts=";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const apiKey = typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined;
+const ai = new GoogleGenAI({ apiKey: apiKey || "" });
 
 export async function fetchWinGoData(): Promise<WinGoApiResponse> {
   const ts = Date.now();
