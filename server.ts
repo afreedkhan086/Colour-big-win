@@ -1,5 +1,4 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -59,7 +58,6 @@ async function startServer() {
     }
 
     // If all fail, return a simulated response so the app doesn't stay "Offline"
-    // This allows the user to see the UI working while we wait for the API to recover
     res.json({
       code: 0,
       data: {
@@ -75,6 +73,7 @@ async function startServer() {
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -88,8 +87,8 @@ async function startServer() {
     });
   }
 
-  // Only listen if not being imported as a module (e.g. by Vercel)
-  if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
+  // Only listen if not being imported as a module (e.g. by Vercel or Netlify)
+  if (process.env.NODE_ENV !== "production" || (!process.env.VERCEL && !process.env.NETLIFY)) {
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on http://localhost:${PORT}`);
     });
