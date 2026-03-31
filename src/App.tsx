@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Activity, TrendingUp, ShieldCheck, History, Zap, AlertCircle, BrainCircuit, BarChart3, Info, ListOrdered, X } from "lucide-react";
+import { Activity, TrendingUp, ShieldCheck, History, Zap, AlertCircle, BrainCircuit, BarChart3, Info, ListOrdered, X, Settings, Key } from "lucide-react";
 import { fetchWinGoData, analyzeData, getAIInsights, getAIPrediction } from "./services/engine";
 import { PredictionResult, Stats, AIInsight } from "./types";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
@@ -27,6 +27,9 @@ export default function App() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [winLossHistory, setWinLossHistory] = useState<WinLossRecord[]>([]);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [userApiKey, setUserApiKey] = useState<string>(() => localStorage.getItem("gemini_api_key") || "");
+  const [tempApiKey, setTempApiKey] = useState<string>("");
 
   const predictionHistoryRef = useRef<Record<string, "BIG" | "SMALL">>({});
   const feedIdCounter = useRef(0);
@@ -116,7 +119,7 @@ export default function App() {
   const handleAIAnalysis = async () => {
     if (bsHistory.length < 10) return;
     setIsAnalyzing(true);
-    const insight = await getAIInsights(bsHistory);
+    const insight = await getAIInsights(bsHistory, userApiKey);
     setAiInsight(insight);
     setIsAnalyzing(false);
     addFeed("AI Deep Analysis Completed", "text-cyan-400");
@@ -130,7 +133,7 @@ export default function App() {
     setNextPeriod(nextP);
     
     // Use Gemini for the main prediction
-    const result = await getAIPrediction(bsHistory);
+    const result = await getAIPrediction(bsHistory, userApiKey);
     setPrediction(result);
     
     if (result.pick !== "WAIT") {
@@ -138,6 +141,15 @@ export default function App() {
       addFeed(`AI Prediction: ${result.pick}`, "text-cyan-400");
     }
     setIsAnalyzing(false);
+  };
+
+  const saveApiKey = () => {
+    localStorage.setItem("gemini_api_key", tempApiKey);
+    setUserApiKey(tempApiKey);
+    setShowSettingsModal(false);
+    addFeed("API Key Updated Successfully", "text-emerald-400");
+    // Trigger a new prediction with the new key if possible
+    if (lastPeriod) getNewPrediction();
   };
 
   useEffect(() => {
@@ -183,11 +195,23 @@ export default function App() {
             </div>
           </div>
           <div className="flex flex-col items-end relative z-10">
-            <div className="flex items-center gap-3 bg-slate-950/50 px-4 py-2 rounded-full border border-white/5">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                {status === "connecting" ? "Syncing..." : status === "connected" ? "Live Link" : "Offline"}
-              </span>
-              <div className={`w-2 h-2 rounded-full ${status === "connected" ? "bg-emerald-500 shadow-[0_0_15px_#10b981]" : "bg-red-500 shadow-[0_0_15px_#ef4444]"} ${status === "connecting" ? "animate-ping" : ""}`} />
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => {
+                  setTempApiKey(userApiKey);
+                  setShowSettingsModal(true);
+                }}
+                className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full border border-white/10 transition-colors group/btn"
+                title="Settings"
+              >
+                <Settings className="w-4 h-4 text-slate-400 group-hover/btn:text-cyan-400 transition-colors" />
+              </button>
+              <div className="flex items-center gap-3 bg-slate-950/50 px-4 py-2 rounded-full border border-white/5">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  {status === "connecting" ? "Syncing..." : status === "connected" ? "Live Link" : "Offline"}
+                </span>
+                <div className={`w-2 h-2 rounded-full ${status === "connected" ? "bg-emerald-500 shadow-[0_0_15px_#10b981]" : "bg-red-500 shadow-[0_0_15px_#ef4444]"} ${status === "connecting" ? "animate-ping" : ""}`} />
+              </div>
             </div>
             <p className="text-[9px] text-slate-500 font-mono mt-2 tracking-tighter uppercase">{lastUpdate}</p>
           </div>
@@ -494,6 +518,77 @@ export default function App() {
                   <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Total Losses</div>
                   <div className="text-2xl font-black text-rose-400">{stats.losses}</div>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Settings Modal */}
+      <AnimatePresence>
+        {showSettingsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSettingsModal(false)}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-md bg-slate-900 border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden"
+            >
+              <div className="p-6 border-b border-white/5 flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <Settings className="w-5 h-5 text-cyan-400" />
+                  <h2 className="text-lg font-black text-white uppercase tracking-widest">Configuration</h2>
+                </div>
+                <button 
+                  onClick={() => setShowSettingsModal(false)}
+                  className="p-2 hover:bg-white/5 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5 text-slate-400" />
+                </button>
+              </div>
+              
+              <div className="p-8 space-y-6">
+                <div className="space-y-3">
+                  <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                    <Key className="w-3 h-3" />
+                    Gemini API Key
+                  </label>
+                  <div className="relative">
+                    <input 
+                      type="password"
+                      value={tempApiKey}
+                      onChange={(e) => setTempApiKey(e.target.value)}
+                      placeholder="Enter your API key here..."
+                      className="w-full bg-slate-950 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-slate-700 focus:outline-none focus:border-cyan-500/50 transition-colors"
+                    />
+                  </div>
+                  <p className="text-[9px] text-slate-600 leading-relaxed">
+                    Your API key is stored locally in your browser. It is used to power the AI predictions and deep analysis features.
+                  </p>
+                </div>
+
+                <div className="bg-cyan-500/5 border border-cyan-500/10 p-4 rounded-2xl">
+                  <div className="flex gap-3">
+                    <Info className="w-4 h-4 text-cyan-400 shrink-0" />
+                    <p className="text-[10px] text-cyan-400/80 leading-relaxed font-medium">
+                      If left empty, the system will attempt to use the default server-side key.
+                    </p>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={saveApiKey}
+                  className="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-cyan-500/20 transition-all active:scale-[0.98]"
+                >
+                  Save Configuration
+                </button>
               </div>
             </motion.div>
           </div>
