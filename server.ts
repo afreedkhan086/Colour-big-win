@@ -14,21 +14,41 @@ async function startServer() {
   app.get("/api/proxy/wingo", async (req, res) => {
     try {
       const ts = req.query.ts || Date.now();
-      // Using a more common mobile user agent to bypass some bot detections
       const API_URL = `https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?ts=${ts}`;
       
+      // Many of these APIs work better with POST and specific body
       const response = await fetch(API_URL, {
+        method: "POST",
         headers: {
           "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1",
           "Accept": "application/json, text/plain, */*",
+          "Content-Type": "application/json;charset=UTF-8",
           "Referer": "https://ar-lottery01.com/",
           "Origin": "https://ar-lottery01.com",
           "Accept-Language": "en-US,en;q=0.9",
-        }
+        },
+        body: JSON.stringify({
+          pageSize: 20,
+          pageNo: 1,
+          typeId: 1
+        })
       });
       
       if (!response.ok) {
-        throw new Error(`API responded with status: ${response.status}`);
+        // Fallback to GET if POST fails
+        const getResponse = await fetch(API_URL, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1",
+            "Accept": "application/json, text/plain, */*",
+            "Referer": "https://ar-lottery01.com/",
+          }
+        });
+        
+        if (!getResponse.ok) {
+          throw new Error(`API responded with status: ${getResponse.status}`);
+        }
+        const data = await getResponse.json();
+        return res.json(data);
       }
       
       const data = await response.json();
