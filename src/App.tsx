@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Activity, TrendingUp, ShieldCheck, History, Zap, AlertCircle, BrainCircuit, BarChart3, Info, ListOrdered, X, Settings } from "lucide-react";
+import { Activity, TrendingUp, ShieldCheck, History, Zap, AlertCircle, BrainCircuit, BarChart3, Info, ListOrdered, X, Settings, LayoutGrid, Cpu, Fingerprint } from "lucide-react";
 import { fetchWinGoData, analyzeData, getAIInsights, getAIPrediction } from "./services/engine";
 import { PredictionResult, Stats, AIInsight } from "./types";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
@@ -29,6 +29,7 @@ export default function App() {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [timeLeft, setTimeLeft] = useState(60);
+  const [matrixData, setMatrixData] = useState<number[]>(Array.from({ length: 10 }, () => Math.floor(Math.random() * 100)));
 
   const predictionHistoryRef = useRef<Record<string, "BIG" | "SMALL">>({});
   const feedIdCounter = useRef(0);
@@ -75,6 +76,10 @@ export default function App() {
 
       setStatus("connected");
       setLastUpdate(`Last check: ${new Date().toLocaleTimeString()}`);
+      
+      if (json.msg && json.msg.includes("Simulated")) {
+        addFeed("API Unreachable. Using AI Simulation.", "text-amber-400/60");
+      }
 
       if (!lastPeriod) {
         const initialNumbers = list.slice(0, 50).map((item: any) => parseInt(item.number)).reverse();
@@ -163,6 +168,11 @@ export default function App() {
       const now = new Date();
       setTimeLeft(60 - now.getSeconds());
       
+      // Randomize matrix data for "unpredictability"
+      if (now.getSeconds() % 5 === 0) {
+        setMatrixData(Array.from({ length: 10 }, () => Math.floor(Math.random() * 100)));
+      }
+
       // If period just changed (seconds is 0-2), force a refresh
       if (now.getSeconds() <= 2) {
         fetchData();
@@ -228,190 +238,121 @@ export default function App() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
           {/* Main Prediction Panel */}
-          <div className="lg:col-span-7 space-y-6">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-slate-900/80 backdrop-blur-3xl rounded-[2.5rem] p-10 text-center border border-white/10 shadow-2xl relative group"
-            >
-              <div className="absolute -top-px left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-cyan-500 to-transparent" />
+          <div className="lg:col-span-8 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
-              <div className="flex justify-between items-center mb-8">
-                <div className="flex flex-col items-start gap-1">
-                  <span className="px-4 py-1.5 bg-slate-950/50 rounded-full text-[10px] font-black text-slate-400 tracking-widest border border-white/5">
-                    NEXT PERIOD: {nextPeriod ? nextPeriod.slice(-4) : "----"}
-                  </span>
-                  <div className="flex items-center gap-2 px-2">
-                    <div className={`w-1.5 h-1.5 rounded-full ${timeLeft <= 10 ? "bg-rose-500 animate-pulse" : "bg-emerald-500"}`} />
-                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Ends in {timeLeft}s</span>
+              {/* Prediction Window */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-slate-900/80 backdrop-blur-3xl rounded-[2.5rem] p-8 border border-white/10 shadow-2xl relative overflow-hidden group flex flex-col justify-between min-h-[400px]"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent pointer-events-none" />
+                
+                <div className="flex justify-between items-center relative z-10">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Neural Target</span>
+                    <span className="text-sm font-bold text-cyan-400">#{nextPeriod ? nextPeriod.slice(-4) : "----"}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${timeLeft <= 10 ? "bg-rose-500 animate-pulse" : "bg-emerald-500"}`} />
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{timeLeft}s</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Zap className={`w-3 h-3 text-yellow-500 ${isAnalyzing ? "animate-spin" : ""}`} />
-                  <span className="text-[10px] font-bold text-yellow-500/80 uppercase tracking-widest">AI Prediction Active</span>
+
+                <div className="relative py-8 flex flex-col items-center justify-center">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={prediction.pick}
+                      initial={{ scale: 0.8, opacity: 0, rotateX: 45 }}
+                      animate={{ scale: 1, opacity: 1, rotateX: 0 }}
+                      exit={{ scale: 1.2, opacity: 0, rotateX: -45 }}
+                      className={`text-8xl font-black italic tracking-tighter transition-all duration-700 ${
+                        prediction.pick === "BIG" ? "text-emerald-400 drop-shadow-[0_0_40px_rgba(52,211,153,0.5)]" : 
+                        prediction.pick === "SMALL" ? "text-amber-400 drop-shadow-[0_0_40px_rgba(251,191,36,0.5)]" : 
+                        "text-slate-800"
+                      }`}
+                    >
+                      {prediction.pick}
+                    </motion.div>
+                  </AnimatePresence>
+                  
+                  {/* Glitch Overlay */}
+                  <div className="absolute inset-0 pointer-events-none opacity-20 mix-blend-overlay animate-pulse bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
                 </div>
-              </div>
 
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={prediction.pick}
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  className={`text-9xl font-black mb-8 italic tracking-tighter transition-all duration-500 ${
-                    prediction.pick === "BIG" ? "text-emerald-400 drop-shadow-[0_0_30px_rgba(52,211,153,0.4)]" : 
-                    prediction.pick === "SMALL" ? "text-amber-400 drop-shadow-[0_0_30px_rgba(251,191,36,0.4)]" : 
-                    "text-slate-700"
-                  }`}
-                >
-                  {prediction.pick}
-                </motion.div>
-              </AnimatePresence>
-
-              <div className="grid grid-cols-2 gap-8 mt-10 border-t border-white/5 pt-8">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-center gap-2 text-slate-500">
-                    <ShieldCheck className="w-4 h-4" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Confidence Score</span>
+                <div className="relative z-10 space-y-4">
+                  <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    <span>Confidence</span>
+                    <span className="text-white">{prediction.conf}%</span>
                   </div>
-                  <div className="text-4xl font-black text-white tabular-nums">{prediction.conf}%</div>
-                  <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-slate-950 rounded-full overflow-hidden border border-white/5">
                     <motion.div 
                       initial={{ width: 0 }}
                       animate={{ width: `${prediction.conf}%` }}
-                      className="h-full bg-gradient-to-r from-cyan-500 to-blue-500"
+                      className="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500"
                     />
                   </div>
-                </div>
-                <div className="space-y-2 border-l border-white/5">
-                  <div className="flex items-center justify-center gap-2 text-slate-500">
-                    <TrendingUp className="w-4 h-4" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Active Logic</span>
-                  </div>
-                  <div className="text-sm font-black text-cyan-400 uppercase tracking-wider h-10 flex items-center justify-center text-center px-4">
+                  <p className="text-[10px] text-slate-400 leading-relaxed font-mono italic text-center opacity-80">
                     {prediction.logic}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Performance Stats */}
-            <div className="grid grid-cols-3 gap-4">
-              {[
-                { label: "Total Wins", value: stats.wins, color: "text-emerald-400", icon: Zap },
-                { label: "Total Losses", value: stats.losses, color: "text-rose-400", icon: AlertCircle },
-                { label: "Accuracy", value: `${accuracy}%`, color: "text-white", icon: Activity }
-              ].map((stat, i) => (
-                <div key={i} className="bg-slate-900/50 backdrop-blur-xl p-5 rounded-3xl border border-white/5 shadow-lg text-center group hover:border-white/20 transition-colors">
-                  <stat.icon className="w-4 h-4 text-slate-600 mx-auto mb-2 group-hover:text-cyan-400 transition-colors" />
-                  <div className={`text-2xl font-black ${stat.color} tabular-nums`}>{stat.value}</div>
-                  <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">{stat.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Sidebar Section */}
-          <div className="lg:col-span-5 space-y-6">
-            
-            {/* AI Insights Card */}
-            <div className="bg-slate-900/80 backdrop-blur-3xl rounded-[2.5rem] p-6 border border-white/10 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-4 opacity-10">
-                <BrainCircuit className="w-20 h-20 text-cyan-500" />
-              </div>
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
-                  <h3 className="text-xs font-black text-slate-300 uppercase tracking-widest">Google Gemini Analysis</h3>
-                </div>
-                {isAnalyzing && <div className="text-[10px] text-cyan-400 font-bold animate-pulse uppercase">Scanning...</div>}
-              </div>
-
-              {aiInsight ? (
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="space-y-6"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest ${
-                        aiInsight.sentiment === "BULLISH" ? "bg-emerald-500/20 text-emerald-400" : 
-                        aiInsight.sentiment === "BEARISH" ? "bg-rose-500/20 text-rose-400" : 
-                        "bg-slate-800 text-slate-400"
-                      }`}>
-                        {aiInsight.sentiment}
-                      </span>
-                      <span className={`text-[10px] font-bold tracking-widest ${
-                        aiInsight.riskLevel === "LOW" ? "text-emerald-400" : 
-                        aiInsight.riskLevel === "MEDIUM" ? "text-amber-400" : "text-rose-400"
-                      }`}>
-                        RISK: {aiInsight.riskLevel}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Trend Strength</div>
-                      <div className="text-xs font-black text-cyan-400">{aiInsight.trendStrength}%</div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Detected Patterns</div>
-                    <div className="flex flex-wrap gap-2">
-                      {aiInsight.detectedPatterns.map((p, i) => (
-                        <span key={i} className="px-2 py-1 bg-slate-950/50 border border-white/5 rounded-md text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-                          {p}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-slate-400 leading-relaxed font-medium italic border-l-2 border-cyan-500/30 pl-4">
-                    "{aiInsight.reasoning}"
                   </p>
-                </motion.div>
-              ) : (
-                <div className="py-8 text-center text-slate-600 space-y-2">
-                  <Info className="w-6 h-6 mx-auto opacity-20" />
-                  <p className="text-[10px] font-bold uppercase tracking-widest">Waiting for next data batch...</p>
                 </div>
-              )}
-              
-              <div className="grid grid-cols-2 gap-3 mt-6">
-                <button 
-                  onClick={handleAIAnalysis}
-                  disabled={isAnalyzing || bsHistory.length < 10}
-                  className="py-3 bg-cyan-500/10 hover:bg-cyan-500/20 disabled:opacity-30 border border-cyan-500/20 rounded-2xl text-[10px] font-black text-cyan-400 uppercase tracking-widest transition-all active:scale-95"
-                >
-                  Deep Scan
-                </button>
-                <button 
-                  onClick={() => setShowHistoryModal(true)}
-                  className="py-3 bg-slate-800 hover:bg-slate-700 border border-white/5 rounded-2xl text-[10px] font-black text-slate-300 uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2"
-                >
-                  <ListOrdered className="w-3 h-3" />
-                  History
-                </button>
-              </div>
+              </motion.div>
+
+              {/* Probability Matrix Window */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-slate-900/50 backdrop-blur-xl rounded-[2.5rem] p-8 border border-white/5 shadow-xl flex flex-col justify-between"
+              >
+                <div className="flex items-center gap-3 mb-6">
+                  <LayoutGrid className="w-4 h-4 text-cyan-500" />
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Neural Probability Matrix</h3>
+                </div>
+
+                <div className="grid grid-cols-5 gap-2 flex-1 items-center">
+                  {matrixData.map((prob, i) => {
+                    const isHigh = prob > 75;
+                    return (
+                      <div key={i} className={`aspect-square rounded-xl border flex flex-col items-center justify-center gap-1 transition-all duration-700 ${
+                        isHigh ? "bg-cyan-500/20 border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.2)]" : "bg-slate-950/50 border-white/5"
+                      }`}>
+                        <span className="text-[8px] font-bold text-slate-500">{i}</span>
+                        <span className={`text-[10px] font-black ${isHigh ? "text-cyan-400" : "text-slate-600"}`}>{prob}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-6 pt-6 border-t border-white/5 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Cpu className="w-3 h-3 text-slate-600" />
+                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Processing Layer: L3</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Fingerprint className="w-3 h-3 text-emerald-500" />
+                    <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">Verified</span>
+                  </div>
+                </div>
+              </motion.div>
+
             </div>
 
-            {/* Visual History Chart */}
-            <div className="bg-slate-900/50 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/5 shadow-xl space-y-6">
-              <div className="flex items-center justify-between">
+            {/* Chart Row */}
+            <div className="bg-slate-900/50 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/5 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <BarChart3 className="w-4 h-4 text-slate-500" />
                   <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Volatility Index</h3>
                 </div>
                 <div className="flex gap-1">
-                  {bsHistory.slice(-10).map((bs, i) => (
-                    <div 
-                      key={i} 
-                      className={`w-2 h-2 rounded-full ${bs === 'BIG' ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-amber-500 shadow-[0_0_8px_#f59e0b]'}`} 
-                      title={bs}
-                    />
+                  {bsHistory.slice(-8).map((bs, i) => (
+                    <div key={i} className={`w-1.5 h-1.5 rounded-full ${bs === 'BIG' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                   ))}
                 </div>
               </div>
-              <div className="h-40 w-full">
+              <div className="h-32 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData}>
                     <defs>
@@ -420,21 +361,39 @@ export default function App() {
                         <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '10px' }}
-                      itemStyle={{ color: '#06b6d4' }}
-                    />
-                    <Area type="monotone" dataKey="value" stroke="#06b6d4" fillOpacity={1} fill="url(#colorValue)" strokeWidth={3} />
+                    <Area type="monotone" dataKey="value" stroke="#06b6d4" fillOpacity={1} fill="url(#colorValue)" strokeWidth={2} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             </div>
+          </div>
+
+          {/* Sidebar Section */}
+          <div className="lg:col-span-4 space-y-6">
+            
+            {/* History Button Window */}
+            <div className="bg-slate-900/80 backdrop-blur-3xl rounded-[2.5rem] p-6 border border-white/10 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                <History className="w-20 h-20 text-slate-500" />
+              </div>
+              <div className="flex items-center gap-2 mb-6">
+                <div className="w-2 h-2 rounded-full bg-slate-500" />
+                <h3 className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Data Archive</h3>
+              </div>
+              <button 
+                onClick={() => setShowHistoryModal(true)}
+                className="w-full py-4 bg-slate-800 hover:bg-slate-700 border border-white/5 rounded-2xl text-[10px] font-black text-slate-300 uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                <History className="w-4 h-4" />
+                View Full History
+              </button>
+            </div>
 
             {/* Real-time Feed */}
-            <div className="bg-slate-900/50 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/5 shadow-xl h-48 flex flex-col">
+            <div className="bg-slate-900/50 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/5 shadow-xl h-[340px] flex flex-col">
               <div className="flex items-center gap-2 mb-4">
-                <Zap className="w-4 h-4 text-slate-500" />
-                <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">System Logs</h3>
+                <Activity className="w-4 h-4 text-slate-500" />
+                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Neural Logs</h3>
               </div>
               <div className="flex-1 font-mono text-[9px] space-y-2 overflow-hidden">
                 <AnimatePresence initial={false}>
@@ -445,7 +404,7 @@ export default function App() {
                       animate={{ opacity: 1, x: 0 }}
                       className={`${item.color} flex items-center gap-3 bg-slate-950/30 p-2 rounded-lg border border-white/5`}
                     >
-                      <span className="opacity-30 tracking-tighter">[{new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
+                      <span className="opacity-30">[{new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
                       <span className="font-bold tracking-tight uppercase">{item.msg}</span>
                     </motion.div>
                   ))}

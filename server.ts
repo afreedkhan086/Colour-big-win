@@ -68,27 +68,30 @@ async function startServer() {
     }
 
     // If all fail, return a simulated response so the app doesn't stay "Offline"
-    // We generate dynamic issue numbers based on current time to keep the app "moving"
+    // We generate dynamic issue numbers based on IST time (UTC+5:30) to match the game's local time
     const now = new Date();
-    const YYYYMMDD = now.getFullYear().toString() + 
-                     (now.getMonth() + 1).toString().padStart(2, '0') + 
-                     now.getDate().toString().padStart(2, '0');
+    const istOffset = 5.5 * 60 * 60 * 1000; // 5 hours 30 minutes in ms
+    const istDate = new Date(now.getTime() + istOffset);
+    
+    const YYYY = istDate.getUTCFullYear();
+    const MM = (istDate.getUTCMonth() + 1).toString().padStart(2, '0');
+    const DD = istDate.getUTCDate().toString().padStart(2, '0');
+    const YYYYMMDD = `${YYYY}${MM}${DD}`;
     
     // WinGo 1M has 1440 periods a day. 
-    // Calculate current period index based on minutes since midnight
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    // Calculate current period index based on IST minutes since midnight
+    const currentMinutes = istDate.getUTCHours() * 60 + istDate.getUTCMinutes();
     const currentPeriodIndex = currentMinutes + 1;
     
     const simulatedList = [];
     // Generate last 30 periods
     for (let i = 0; i < 30; i++) {
       const periodIndex = currentPeriodIndex - i;
-      if (periodIndex <= 0) continue; // Skip if before midnight
+      if (periodIndex <= 0) continue; // Skip if before midnight IST
       
       const issueNumber = YYYYMMDD + periodIndex.toString().padStart(4, '0');
       
       // Use a seed-based random for consistency within the same period
-      // This ensures that if we fetch multiple times in the same minute, we get the same result
       const seed = parseInt(issueNumber);
       const pseudoRandom = (seed * 9301 + 49297) % 233280;
       const num = Math.floor((pseudoRandom / 233280) * 10);

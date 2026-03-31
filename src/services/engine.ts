@@ -62,13 +62,18 @@ export async function getAIInsights(bsHistory: ("BIG" | "SMALL")[]): Promise<AII
 export async function getAIPrediction(bsHistory: ("BIG" | "SMALL")[]): Promise<PredictionResult> {
   try {
     const ai = getAIInstance();
-    const historyStr = bsHistory.slice(-15).join(", ");
+    const historyStr = bsHistory.slice(-20).join(", ");
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Analyze this WinGo 1M sequence: [${historyStr}]. 
-      Predict the NEXT outcome (BIG or SMALL) based on pattern recognition and probability.
+      Predict the NEXT outcome (BIG or SMALL) using advanced pattern recognition, Fibonacci retracement, and volume analysis simulation.
+      Be highly specific and slightly unpredictable in your logic. Use a mix of technical jargon and Hindi/English.
       Provide response in JSON format.
-      Schema: { "pick": "BIG" | "SMALL", "conf": number (0-100), "logic": "short explanation in Hindi/English mix" }`,
+      Schema: { 
+        "pick": "BIG" | "SMALL", 
+        "conf": number (60-99), 
+        "logic": "detailed technical explanation (e.g., 'Double Bottom detected on 5-period EMA, Reversal imminent' or 'Dragon tail extension on 3rd wave')" 
+      }`,
       config: {
         responseMimeType: "application/json",
       }
@@ -77,8 +82,8 @@ export async function getAIPrediction(bsHistory: ("BIG" | "SMALL")[]): Promise<P
     const result = JSON.parse(response.text || "{}");
     return {
       pick: result.pick || "WAIT",
-      conf: result.conf || 50,
-      logic: `AI: ${result.logic || "Pattern Analysis"}`
+      conf: result.conf || 75,
+      logic: result.logic || "Neural Pattern Synchronisation"
     };
   } catch (error) {
     console.error("Gemini Prediction Error:", error);
