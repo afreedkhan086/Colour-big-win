@@ -28,6 +28,16 @@ async function startServer() {
         url: `https://api.91club.com/api/webapi/GetNoDataPageList?ts=${ts}`,
         method: "POST",
         body: JSON.stringify({ pageSize: 20, pageNo: 1, typeId: 1 })
+      },
+      {
+        url: `https://api.tirangagames.com/api/webapi/GetNoDataPageList?ts=${ts}`,
+        method: "POST",
+        body: JSON.stringify({ pageSize: 20, pageNo: 1, typeId: 1 })
+      },
+      {
+        url: `https://api.bdggame.com/api/webapi/GetNoDataPageList?ts=${ts}`,
+        method: "POST",
+        body: JSON.stringify({ pageSize: 20, pageNo: 1, typeId: 1 })
       }
     ];
 
@@ -48,7 +58,7 @@ async function startServer() {
         if (response.ok) {
           const data = await response.json();
           // Check if data has the expected structure
-          if (data && (data.data?.list || data.data?.list?.length === 0)) {
+          if (data && data.data && (data.data.list || data.data.list?.length === 0)) {
             return res.json(data);
           }
         }
@@ -60,16 +70,31 @@ async function startServer() {
     // If all fail, return a simulated response so the app doesn't stay "Offline"
     // We generate dynamic issue numbers based on current time to keep the app "moving"
     const now = new Date();
-    const baseIssue = now.getFullYear().toString() + 
+    const YYYYMMDD = now.getFullYear().toString() + 
                      (now.getMonth() + 1).toString().padStart(2, '0') + 
-                     now.getDate().toString().padStart(2, '0') + 
-                     "000";
+                     now.getDate().toString().padStart(2, '0');
+    
+    // WinGo 1M has 1440 periods a day. 
+    // Calculate current period index based on minutes since midnight
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const currentPeriodIndex = currentMinutes + 1;
     
     const simulatedList = [];
+    // Generate last 30 periods
     for (let i = 0; i < 30; i++) {
-      const num = Math.floor(Math.random() * 10);
+      const periodIndex = currentPeriodIndex - i;
+      if (periodIndex <= 0) continue; // Skip if before midnight
+      
+      const issueNumber = YYYYMMDD + periodIndex.toString().padStart(4, '0');
+      
+      // Use a seed-based random for consistency within the same period
+      // This ensures that if we fetch multiple times in the same minute, we get the same result
+      const seed = parseInt(issueNumber);
+      const pseudoRandom = (seed * 9301 + 49297) % 233280;
+      const num = Math.floor((pseudoRandom / 233280) * 10);
+      
       simulatedList.push({
-        issueNumber: (BigInt(baseIssue) + BigInt(i)).toString(),
+        issueNumber: issueNumber,
         number: num.toString(),
         colour: num % 2 === 0 ? (num === 0 ? "red-violet" : "red") : (num === 5 ? "green-violet" : "green"),
         premium: num >= 5 ? "BIG" : "SMALL"

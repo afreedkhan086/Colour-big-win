@@ -28,6 +28,7 @@ export default function App() {
   const [winLossHistory, setWinLossHistory] = useState<WinLossRecord[]>([]);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(60);
 
   const predictionHistoryRef = useRef<Record<string, "BIG" | "SMALL">>({});
   const feedIdCounter = useRef(0);
@@ -157,7 +158,21 @@ export default function App() {
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
+    
+    const timer = setInterval(() => {
+      const now = new Date();
+      setTimeLeft(60 - now.getSeconds());
+      
+      // If period just changed (seconds is 0-2), force a refresh
+      if (now.getSeconds() <= 2) {
+        fetchData();
+      }
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(timer);
+    };
   }, []); // Poller should only run once on mount
 
   const chartData = historyData.slice(-20).map((val, idx) => ({
@@ -222,9 +237,15 @@ export default function App() {
               <div className="absolute -top-px left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-cyan-500 to-transparent" />
               
               <div className="flex justify-between items-center mb-8">
-                <span className="px-4 py-1.5 bg-slate-950/50 rounded-full text-[10px] font-black text-slate-400 tracking-widest border border-white/5">
-                  NEXT PERIOD: {nextPeriod ? nextPeriod.slice(-3) : "---"}
-                </span>
+                <div className="flex flex-col items-start gap-1">
+                  <span className="px-4 py-1.5 bg-slate-950/50 rounded-full text-[10px] font-black text-slate-400 tracking-widest border border-white/5">
+                    NEXT PERIOD: {nextPeriod ? nextPeriod.slice(-4) : "----"}
+                  </span>
+                  <div className="flex items-center gap-2 px-2">
+                    <div className={`w-1.5 h-1.5 rounded-full ${timeLeft <= 10 ? "bg-rose-500 animate-pulse" : "bg-emerald-500"}`} />
+                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Ends in {timeLeft}s</span>
+                  </div>
+                </div>
                 <div className="flex items-center gap-2">
                   <Zap className={`w-3 h-3 text-yellow-500 ${isAnalyzing ? "animate-spin" : ""}`} />
                   <span className="text-[10px] font-bold text-yellow-500/80 uppercase tracking-widest">AI Prediction Active</span>
