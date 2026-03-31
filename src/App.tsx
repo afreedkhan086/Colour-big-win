@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Activity, TrendingUp, ShieldCheck, History, Zap, AlertCircle, BrainCircuit, BarChart3, Info, ListOrdered, X, Settings, Key } from "lucide-react";
+import { Activity, TrendingUp, ShieldCheck, History, Zap, AlertCircle, BrainCircuit, BarChart3, Info, ListOrdered, X, Settings } from "lucide-react";
 import { fetchWinGoData, analyzeData, getAIInsights, getAIPrediction } from "./services/engine";
 import { PredictionResult, Stats, AIInsight } from "./types";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
@@ -28,8 +28,6 @@ export default function App() {
   const [winLossHistory, setWinLossHistory] = useState<WinLossRecord[]>([]);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [userApiKey, setUserApiKey] = useState<string>(() => localStorage.getItem("gemini_api_key") || "");
-  const [tempApiKey, setTempApiKey] = useState<string>("");
 
   const predictionHistoryRef = useRef<Record<string, "BIG" | "SMALL">>({});
   const feedIdCounter = useRef(0);
@@ -119,7 +117,7 @@ export default function App() {
   const handleAIAnalysis = async () => {
     if (bsHistory.length < 10) return;
     setIsAnalyzing(true);
-    const insight = await getAIInsights(bsHistory, userApiKey);
+    const insight = await getAIInsights(bsHistory);
     setAiInsight(insight);
     setIsAnalyzing(false);
     addFeed("AI Deep Analysis Completed", "text-cyan-400");
@@ -138,7 +136,7 @@ export default function App() {
     addFeed(`Analyzing Period ${nextP}...`, "text-cyan-500/50");
     
     // Use Gemini for the main prediction
-    const result = await getAIPrediction(bsHistory, userApiKey);
+    const result = await getAIPrediction(bsHistory);
     setPrediction(result);
     
     if (result.pick !== "WAIT") {
@@ -148,15 +146,6 @@ export default function App() {
       addFeed("AI Engine Busy. Retrying...", "text-amber-400");
     }
     setIsAnalyzing(false);
-  };
-
-  const saveApiKey = () => {
-    localStorage.setItem("gemini_api_key", tempApiKey);
-    setUserApiKey(tempApiKey);
-    setShowSettingsModal(false);
-    addFeed("API Key Updated Successfully", "text-emerald-400");
-    // Trigger a new prediction with the new key if possible
-    if (lastPeriod) getNewPrediction();
   };
 
   useEffect(() => {
@@ -209,16 +198,6 @@ export default function App() {
                 title="Force Refresh"
               >
                 <Activity className={`w-4 h-4 text-slate-400 group-hover/btn:text-emerald-400 transition-colors ${status === "connecting" ? "animate-spin" : ""}`} />
-              </button>
-              <button 
-                onClick={() => {
-                  setTempApiKey(userApiKey);
-                  setShowSettingsModal(true);
-                }}
-                className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full border border-white/10 transition-colors group/btn"
-                title="Settings"
-              >
-                <Settings className="w-4 h-4 text-slate-400 group-hover/btn:text-cyan-400 transition-colors" />
               </button>
               <div className="flex items-center gap-3 bg-slate-950/50 px-4 py-2 rounded-full border border-white/5">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
@@ -538,7 +517,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Settings Modal */}
+      {/* Settings Modal - Simplified for Status */}
       <AnimatePresence>
         {showSettingsModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -557,8 +536,8 @@ export default function App() {
             >
               <div className="p-6 border-b border-white/5 flex justify-between items-center">
                 <div className="flex items-center gap-3">
-                  <Settings className="w-5 h-5 text-cyan-400" />
-                  <h2 className="text-lg font-black text-white uppercase tracking-widest">Configuration</h2>
+                  <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                  <h2 className="text-lg font-black text-white uppercase tracking-widest">System Status</h2>
                 </div>
                 <button 
                   onClick={() => setShowSettingsModal(false)}
@@ -569,39 +548,32 @@ export default function App() {
               </div>
               
               <div className="p-8 space-y-6">
-                <div className="space-y-3">
-                  <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                    <Key className="w-3 h-3" />
-                    Gemini API Key
-                  </label>
-                  <div className="relative">
-                    <input 
-                      type="password"
-                      value={tempApiKey}
-                      onChange={(e) => setTempApiKey(e.target.value)}
-                      placeholder="Enter your API key here..."
-                      className="w-full bg-slate-950 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-slate-700 focus:outline-none focus:border-cyan-500/50 transition-colors"
-                    />
+                <div className="bg-emerald-500/5 border border-emerald-500/10 p-6 rounded-3xl text-center space-y-4">
+                  <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto">
+                    <BrainCircuit className="w-8 h-8 text-emerald-400" />
                   </div>
-                  <p className="text-[9px] text-slate-600 leading-relaxed">
-                    Your API key is stored locally in your browser. It is used to power the AI predictions and deep analysis features.
-                  </p>
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-black text-white uppercase tracking-widest">AI Engine Active</h3>
+                    <p className="text-[10px] text-emerald-400/60 font-bold uppercase tracking-widest">Enterprise Neural Network Connected</p>
+                  </div>
                 </div>
 
-                <div className="bg-cyan-500/5 border border-cyan-500/10 p-4 rounded-2xl">
-                  <div className="flex gap-3">
-                    <Info className="w-4 h-4 text-cyan-400 shrink-0" />
-                    <p className="text-[10px] text-cyan-400/80 leading-relaxed font-medium">
-                      If left empty, the system will attempt to use the default server-side key.
-                    </p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-slate-950/50 rounded-2xl border border-white/5">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">API Status</span>
+                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Operational</span>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-slate-950/50 rounded-2xl border border-white/5">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Encryption</span>
+                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">AES-256</span>
                   </div>
                 </div>
 
                 <button 
-                  onClick={saveApiKey}
-                  className="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-cyan-500/20 transition-all active:scale-[0.98]"
+                  onClick={() => setShowSettingsModal(false)}
+                  className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all active:scale-[0.98]"
                 >
-                  Save Configuration
+                  Close
                 </button>
               </div>
             </motion.div>

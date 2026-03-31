@@ -3,8 +3,10 @@ import { GoogleGenAI } from "@google/genai";
 
 const API_URL = "/api/proxy/wingo?ts=";
 
-function getAIInstance(customKey?: string) {
-  const apiKey = customKey || (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined);
+function getAIInstance() {
+  // Use environment variable first, then hardcoded fallback
+  const hardcodedKey = "AIzaSyBNMBi0XqzkotqqB_CkguW2BUt7NKDnAXY";
+  const apiKey = (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined) || hardcodedKey;
   return new GoogleGenAI({ apiKey: apiKey || "" });
 }
 
@@ -17,9 +19,9 @@ export async function fetchWinGoData(): Promise<WinGoApiResponse> {
   return response.json();
 }
 
-export async function getAIInsights(bsHistory: ("BIG" | "SMALL")[], customKey?: string): Promise<AIInsight> {
+export async function getAIInsights(bsHistory: ("BIG" | "SMALL")[]): Promise<AIInsight> {
   try {
-    const ai = getAIInstance(customKey);
+    const ai = getAIInstance();
     const historyStr = bsHistory.slice(-25).join(", ");
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -57,9 +59,9 @@ export async function getAIInsights(bsHistory: ("BIG" | "SMALL")[], customKey?: 
   }
 }
 
-export async function getAIPrediction(bsHistory: ("BIG" | "SMALL")[], customKey?: string): Promise<PredictionResult> {
+export async function getAIPrediction(bsHistory: ("BIG" | "SMALL")[]): Promise<PredictionResult> {
   try {
-    const ai = getAIInstance(customKey);
+    const ai = getAIInstance();
     const historyStr = bsHistory.slice(-15).join(", ");
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
