@@ -2,6 +2,8 @@ export interface AIInsight {
   sentiment: "BULLISH" | "BEARISH" | "NEUTRAL";
   reasoning: string;
   riskLevel: "LOW" | "MEDIUM" | "HIGH";
+  detectedPatterns: string[];
+  trendStrength: number;
 }
 
 export interface WinGoHistoryItem {

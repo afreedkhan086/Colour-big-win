@@ -1,4 +1,4 @@
-import { WinGoApiResponse, PredictionResult, AIInsight } from "./types";
+import { WinGoApiResponse, PredictionResult, AIInsight } from "../types";
 import { GoogleGenAI } from "@google/genai";
 
 const API_URL = "/api/proxy/wingo?ts=";
@@ -16,24 +16,39 @@ export async function fetchWinGoData(): Promise<WinGoApiResponse> {
 
 export async function getAIInsights(bsHistory: ("BIG" | "SMALL")[]): Promise<AIInsight> {
   try {
-    const historyStr = bsHistory.slice(-20).join(", ");
+    const historyStr = bsHistory.slice(-25).join(", ");
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Analyze this WinGo 1M sequence: [${historyStr}]. 
       Provide a deep technical analysis in JSON format.
-      Schema: { "sentiment": "BULLISH" (for BIG) | "BEARISH" (for SMALL) | "NEUTRAL", "reasoning": "short explanation in Hindi/English mix", "riskLevel": "LOW" | "MEDIUM" | "HIGH" }`,
+      Schema: { 
+        "sentiment": "BULLISH" (for BIG) | "BEARISH" (for SMALL) | "NEUTRAL", 
+        "reasoning": "short explanation in Hindi/English mix", 
+        "riskLevel": "LOW" | "MEDIUM" | "HIGH",
+        "detectedPatterns": ["Dragon", "Mirror", "Staircase", etc.],
+        "trendStrength": number (0-100)
+      }`,
       config: {
         responseMimeType: "application/json",
       }
     });
 
-    return JSON.parse(response.text || "{}") as AIInsight;
+    const result = JSON.parse(response.text || "{}");
+    return {
+      sentiment: result.sentiment || "NEUTRAL",
+      reasoning: result.reasoning || "AI Engine currently recalibrating...",
+      riskLevel: result.riskLevel || "MEDIUM",
+      detectedPatterns: result.detectedPatterns || ["Scanning..."],
+      trendStrength: result.trendStrength || 50
+    };
   } catch (error) {
     console.error("Gemini Error:", error);
     return {
       sentiment: "NEUTRAL",
       reasoning: "AI Engine currently recalibrating...",
-      riskLevel: "MEDIUM"
+      riskLevel: "MEDIUM",
+      detectedPatterns: ["Error"],
+      trendStrength: 0
     };
   }
 }

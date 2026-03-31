@@ -292,24 +292,42 @@ export default function App() {
                 <motion.div 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="space-y-4"
+                  className="space-y-6"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest ${
-                      aiInsight.sentiment === "BULLISH" ? "bg-emerald-500/20 text-emerald-400" : 
-                      aiInsight.sentiment === "BEARISH" ? "bg-rose-500/20 text-rose-400" : 
-                      "bg-slate-800 text-slate-400"
-                    }`}>
-                      {aiInsight.sentiment}
-                    </span>
-                    <span className={`text-[10px] font-bold tracking-widest ${
-                      aiInsight.riskLevel === "LOW" ? "text-emerald-400" : 
-                      aiInsight.riskLevel === "MEDIUM" ? "text-amber-400" : "text-rose-400"
-                    }`}>
-                      RISK: {aiInsight.riskLevel}
-                    </span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest ${
+                        aiInsight.sentiment === "BULLISH" ? "bg-emerald-500/20 text-emerald-400" : 
+                        aiInsight.sentiment === "BEARISH" ? "bg-rose-500/20 text-rose-400" : 
+                        "bg-slate-800 text-slate-400"
+                      }`}>
+                        {aiInsight.sentiment}
+                      </span>
+                      <span className={`text-[10px] font-bold tracking-widest ${
+                        aiInsight.riskLevel === "LOW" ? "text-emerald-400" : 
+                        aiInsight.riskLevel === "MEDIUM" ? "text-amber-400" : "text-rose-400"
+                      }`}>
+                        RISK: {aiInsight.riskLevel}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Trend Strength</div>
+                      <div className="text-xs font-black text-cyan-400">{aiInsight.trendStrength}%</div>
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-400 leading-relaxed font-medium italic">
+
+                  <div className="space-y-2">
+                    <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Detected Patterns</div>
+                    <div className="flex flex-wrap gap-2">
+                      {aiInsight.detectedPatterns.map((p, i) => (
+                        <span key={i} className="px-2 py-1 bg-slate-950/50 border border-white/5 rounded-md text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                          {p}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-400 leading-relaxed font-medium italic border-l-2 border-cyan-500/30 pl-4">
                     "{aiInsight.reasoning}"
                   </p>
                 </motion.div>
@@ -339,10 +357,21 @@ export default function App() {
             </div>
 
             {/* Visual History Chart */}
-            <div className="bg-slate-900/50 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/5 shadow-xl h-64">
-              <div className="flex items-center gap-2 mb-4">
-                <BarChart3 className="w-4 h-4 text-slate-500" />
-                <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Volatility Index</h3>
+            <div className="bg-slate-900/50 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/5 shadow-xl space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-slate-500" />
+                  <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Volatility Index</h3>
+                </div>
+                <div className="flex gap-1">
+                  {bsHistory.slice(-10).map((bs, i) => (
+                    <div 
+                      key={i} 
+                      className={`w-2 h-2 rounded-full ${bs === 'BIG' ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-amber-500 shadow-[0_0_8px_#f59e0b]'}`} 
+                      title={bs}
+                    />
+                  ))}
+                </div>
               </div>
               <div className="h-40 w-full">
                 <ResponsiveContainer width="100%" height="100%">
